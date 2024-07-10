@@ -1,3 +1,4 @@
+using ExcelEpplus_api.Entities;
 using ExcelEpplus_api.Interfaces;
 using ExcelEpplus_api.Services;
 using OfficeOpenXml;
@@ -11,7 +12,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddScoped<IExcelService, ExcelService>();
+builder.Services.AddScoped<IExcelService<Employee>, ExcelService<Employee>>();
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 var app = builder.Build();
 

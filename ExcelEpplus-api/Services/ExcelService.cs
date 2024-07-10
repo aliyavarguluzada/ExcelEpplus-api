@@ -1,11 +1,9 @@
-﻿using ExcelEpplus_api.Core;
-using ExcelEpplus_api.Entities;
-using ExcelEpplus_api.Interfaces;
+﻿using ExcelEpplus_api.Interfaces;
 using OfficeOpenXml;
 
 namespace ExcelEpplus_api.Services
 {
-    public class ExcelService : IExcelService
+    public class ExcelService<T> : IExcelService<T>
     {
         private readonly IConfiguration configuration;
         public ExcelService(IConfiguration configuration)
@@ -13,14 +11,15 @@ namespace ExcelEpplus_api.Services
             this.configuration = configuration;
         }
 
-        public async Task<List<Employee>> ReadAsync(string FileName)
+
+        public async Task<List<T>> ReadAsync(string FileName)
         {
-            var directoryPath = configuration["Paths:Excel"]; 
+            var directoryPath = configuration["Paths:Excel"];
             var filePath = Path.Combine(directoryPath, $"{FileName}.xlsx");
-            var employees = new List<Employee>();
+            var items = new List<T>();
 
             int maxRetries = 5;
-            int delay = 1000; 
+            int delay = 1000; // 1 second
 
             for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
@@ -30,28 +29,36 @@ namespace ExcelEpplus_api.Services
                     {
                         var worksheet = package.Workbook.Worksheets[0];
                         var rowCount = worksheet.Dimension.Rows;
+                        var colCount = worksheet.Dimension.Columns;
 
-                        for (int row = 1; row <= rowCount; row++)
+                        for (int row = 2; row <= rowCount; row++) // Assuming the first row is header
                         {
-                            var idCell = worksheet.Cells[row, 1];
-                            var nameCell = worksheet.Cells[row, 2];
-                            var ageCell = worksheet.Cells[row, 3];
+                            var item = Activator.CreateInstance<T>();
+                            var itemType = typeof(T);
+                            var properties = itemType.GetProperties();
 
-                            if (string.IsNullOrEmpty(idCell.Text))
+                            for (int col = 1; col <= colCount; col++)
                             {
-                                break;
+                                var cellValue = worksheet.Cells[row, col].Text;
+                                var property = properties[col - 1]; // Assuming the order of properties matches the columns
+
+                                if (!string.IsNullOrEmpty(cellValue))
+                                {
+                                    object convertedValue = null;
+                                    if (property.PropertyType == typeof(DateTime))
+                                    {
+                                        convertedValue = DateTime.FromOADate(double.Parse(cellValue));
+                                    }
+                                    else
+                                    {
+                                        convertedValue = Convert.ChangeType(cellValue, property.PropertyType);
+                                    }
+                                    property.SetValue(item, convertedValue);
+                                }
                             }
 
-                            var employee = new Employee
-                            {
-                                Id = int.Parse(idCell.Text),
-                                Name = nameCell.Text,
-                                Age = int.Parse(ageCell.Text)
-                            };
-
-                            employees.Add(employee);
+                            items.Add(item);
                         }
-
 
                         break;
                     }
@@ -63,13 +70,16 @@ namespace ExcelEpplus_api.Services
                 }
             }
 
-            return employees;
+            return items;
         }
 
-        public async Task WriteAsync(string FileName, EmployeeRequest request)
+
+        public async Task WriteAsync(string FileName, T request)
         {
-            var directoryPath = configuration["Paths:Excel"]; 
+            var directoryPath = configuration["Paths:Excel"];
             var filePath = Path.Combine(directoryPath, $"{FileName}.xlsx");
+
+            var properties = typeof(T).GetProperties();
 
             if (File.Exists(filePath))
             {
@@ -82,9 +92,11 @@ namespace ExcelEpplus_api.Services
                     var rowCount = worksheet.Dimension?.Rows ?? 0;
                     var nextRow = rowCount + 1;
 
-                    worksheet.Cells[nextRow, 1].Value = request.Id;
-                    worksheet.Cells[nextRow, 2].Value = request.Name;
-                    worksheet.Cells[nextRow, 3].Value = request.Age;
+                    for (int col = 0; col < properties.Length; col++)
+                    {
+                        var propertyValue = properties[col].GetValue(request);
+                        worksheet.Cells[nextRow, col + 1].Value = propertyValue;
+                    }
 
                     await existingPackage.SaveAsync();
                 }
@@ -99,9 +111,18 @@ namespace ExcelEpplus_api.Services
                 {
                     var worksheet = newPackage.Workbook.Worksheets.Add("Sheet1");
 
-                    worksheet.Cells[1, 1].Value = request.Id;
-                    worksheet.Cells[1, 2].Value = request.Name;
-                    worksheet.Cells[1, 3].Value = request.Age;
+                    // Write header
+                    for (int col = 0; col < properties.Length; col++)
+                    {
+                        worksheet.Cells[1, col + 1].Value = properties[col].Name;
+                    }
+
+                    // Write data
+                    for (int col = 0; col < properties.Length; col++)
+                    {
+                        var propertyValue = properties[col].GetValue(request);
+                        worksheet.Cells[2, col + 1].Value = propertyValue;
+                    }
 
                     await newPackage.SaveAsAsync(new FileInfo(filePath));
                 }
@@ -109,9 +130,6 @@ namespace ExcelEpplus_api.Services
 
             Console.WriteLine($"Excel file '{FileName}.xlsx' created/updated successfully!");
         }
-
-
-
     }
 }
 

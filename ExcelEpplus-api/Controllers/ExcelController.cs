@@ -1,5 +1,4 @@
-﻿using ExcelEpplus_api.Core;
-using ExcelEpplus_api.Entities;
+﻿using ExcelEpplus_api.Entities;
 using ExcelEpplus_api.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,18 +8,20 @@ namespace ExcelEpplus_api.Controllers
     [ApiController]
     public class ExcelController : ControllerBase
     {
-        private readonly IExcelService _excelService;
+        private readonly IExcelService<Employee> _excelService;
 
-        public ExcelController(IExcelService excelService)
+        public ExcelController(IExcelService<Employee> excelService)
         {
             _excelService = excelService;
         }
 
 
         [HttpPost("add")]
-        public async Task Write(string FileName, [FromBody] EmployeeRequest request) => await _excelService.WriteAsync(FileName, request);
+        public async Task Write(string FileName, [FromBody] Employee request) => await _excelService.WriteAsync(FileName, request);
         [HttpGet("get")]
         public async Task<List<Employee>> Read(string FileName) => await _excelService.ReadAsync(FileName);
 
     }
+
+
 }

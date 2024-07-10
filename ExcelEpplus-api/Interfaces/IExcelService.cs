@@ -3,9 +3,9 @@ using ExcelEpplus_api.Entities;
 
 namespace ExcelEpplus_api.Interfaces
 {
-    public interface IExcelService
+    public interface IExcelService<T>
     {
-        public Task WriteAsync(string FileName,EmployeeRequest request);
-        public Task<List<Employee>> ReadAsync(string FileName);
+        public Task WriteAsync(string FileName, T request);
+        public Task<List<T>> ReadAsync(string FileName);
     }
 }
