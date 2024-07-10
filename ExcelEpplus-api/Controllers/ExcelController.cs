@@ -19,7 +19,9 @@ namespace ExcelEpplus_api.Controllers
         [HttpPost("add")]
         public async Task Write(string FileName, [FromBody] Employee request) => await _excelService.WriteAsync(FileName, request);
         [HttpGet("get")]
-        public async Task<List<Employee>> Read(string FileName) => await _excelService.ReadAsync(FileName);
+        public async Task<IActionResult> Read(string FileName) => await _excelService.ReadAsync(FileName);
+
+
 
     }
 

@@ -1,5 +1,7 @@
 ﻿using ExcelEpplus_api.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
+using System.Reflection.Metadata.Ecma335;
 
 namespace ExcelEpplus_api.Services
 {
@@ -12,11 +14,13 @@ namespace ExcelEpplus_api.Services
         }
 
 
-        public async Task<List<T>> ReadAsync(string FileName)
+        public async Task<IActionResult> ReadAsync(string FileName)
         {
             var directoryPath = configuration["Paths:Excel"];
             var filePath = Path.Combine(directoryPath, $"{FileName}.xlsx");
             var items = new List<T>();
+
+            byte[] fileBytes = null;
 
             int maxRetries = 5;
             int delay = 1000; // 1 second
@@ -59,7 +63,11 @@ namespace ExcelEpplus_api.Services
 
                             items.Add(item);
                         }
-
+                        using (MemoryStream memoryStream = new MemoryStream())
+                        {
+                            package.SaveAs(memoryStream);
+                            fileBytes = memoryStream.ToArray();
+                        }
                         break;
                     }
                 }
@@ -70,7 +78,10 @@ namespace ExcelEpplus_api.Services
                 }
             }
 
-            return items;
+            return new FileContentResult(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            {
+                FileDownloadName = $"{FileName}.xlsx"
+            };
         }
 
 
