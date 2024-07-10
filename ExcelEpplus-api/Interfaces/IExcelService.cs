@@ -6,7 +6,7 @@ namespace ExcelEpplus_api.Interfaces
 {
     public interface IExcelService<T>
     {
-        public Task WriteAsync(string FileName, T request);
-        public Task<IActionResult> ReadAsync(string FileName);
+        public Task<byte[]> WriteAsync(string FileName, IEnumerable<T> request);
+        public Task<List<T>> ReadAsync(IFormFile file);
     }
 }
